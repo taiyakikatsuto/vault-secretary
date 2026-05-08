@@ -9,7 +9,6 @@ Claude Code の slash command と GitHub Actions で動く。
 - **`/goodmorning`**：今朝のあいさつから始まり、Google Calendar の予定 + Tasks Kanban を読んで「今日やること」を一緒に決める。日中の時間ブロックも雛形として組む。
 - **`/goodnight`**：1日の Thino メモと作業レポートを拾い、計画 vs 実績で振り返る。タスクの完了/延期/新規追加もここで反映。明日やることまで仕込む。
 - **Daily/Weekly/Monthly ノート自動生成**：GitHub Actions が毎朝7時に Inbox と Thino を Claude に渡し、日報を `Diary/Daily/` に書く。週報・月報も同じ仕組みで生成。本人の発言は引用、内面の創作は禁止という秘書視点で書かれる。
-- **`/post`**：直近の Daily から X 投稿を5件作る。文体は自分の過去投稿サンプルを学習させて寄せる。
 - **ntfy.sh プッシュ通知**：日報・週報の中身がそのままスマホに飛んでくる。
 
 ## 仕組み

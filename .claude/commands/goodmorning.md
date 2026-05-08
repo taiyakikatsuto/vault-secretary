@@ -239,7 +239,7 @@ goodmorning で add していいファイル:
 - `schedule.md`
 
 それ以外の差分は**触らない**。特に警戒するパス:
-- `.claude/commands/goodmorning.md` `.claude/commands/goodnight.md` `.claude/commands/post.md` — 追跡対象だがチューニング中の可能性あり
+- `.claude/commands/goodmorning.md` `.claude/commands/goodnight.md` — 追跡対象だがチューニング中の可能性あり
 - `.claude/skills/interview-me/` 配下 — 同上
 - `Inbox/` の作業レポート（`goodmorning_*.md` `goodnight_*.md` 以外の `.md`）— ユーザーが書いて反映タイミングを別に考えているものがある
 
