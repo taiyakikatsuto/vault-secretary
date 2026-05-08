@@ -19,5 +19,5 @@ bash "${REPO_ROOT}/.scripts/sync_cron.sh"
 # yaml が更新されたら追加でステージング
 if ! git diff --quiet "${REPO_ROOT}/.github/workflows/daily-batch.yml" 2>/dev/null; then
     git add "${REPO_ROOT}/.github/workflows/daily-batch.yml"
-    echo "  → daily-batch.yml を config に合わせて自動同期したよ〜♡"
+    echo "  → daily-batch.yml を config に合わせて自動同期した"
 fi
