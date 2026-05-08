@@ -50,52 +50,42 @@ cp -r /tmp/vault-secretary/.scripts ./
 cp -r /tmp/vault-secretary/.github ./
 cp -r /tmp/vault-secretary/.claude ./
 cp /tmp/vault-secretary/secretary.config.example.yml ./
+cp /tmp/vault-secretary/setup.sh ./
 cp /tmp/vault-secretary/.gitignore ./.gitignore.secretary  # 既存と統合
 cp /tmp/vault-secretary/requirements.txt ./
 ```
 
-### 2. プレースホルダーを自分の値で置換
+### 2. setup.sh で対話的に初期化（おすすめ）
 
-`.claude/commands/` 内の Markdown には以下のプレースホルダーが入っている。`sed` でまとめて置換する。
+```bash
+bash setup.sh
+```
+
+呼び名・パートナー名・Google Calendar ID を順番に聞かれるので入力する。空Enter で「使わない」を選べる（共有カレンダーやプライベートカレンダーがない構成にも対応）。
+
+スクリプトは以下をやってくれる：
+
+- `.claude/commands/*.md` のプレースホルダーを入力値で sed 置換
+- 共有・プライベートカレンダーをスキップした場合は該当行を削除
+- 「3つのカレンダー」のような件数表記を実構成に合わせて調整
+- `secretary.config.yml` を生成して `user_name` を埋める
+
+#### 手動でやる場合
+
+setup.sh を使わず手で置換するなら、`.claude/commands/` 内の以下のプレースホルダーを sed なりエディタなりで自分の値に変える：
 
 | プレースホルダー | 何を入れる |
 |---|---|
-| `{{PARTNER_NAME}}` | 共有カレンダーを使う相手の名前。使わないなら該当行を削除してOK |
+| `{{PARTNER_NAME}}` | 共有カレンダーを使う相手の名前 |
 | `{{SHARED_CALENDAR_LABEL}}` | 共有カレンダーのラベル名（例: 家族） |
 | `{{CALENDAR_ID_SHARED}}` | 共有カレンダーの Google Calendar ID |
 | `{{CALENDAR_ID_PRIVATE}}` | プライベート用カレンダーの Google Calendar ID |
-| `{{X_USERNAME}}` | 自分の X(Twitter) アカウント |
 
-```bash
-# Linux/GNU sed
-sed -i \
-  -e 's|{{PARTNER_NAME}}|花子|g' \
-  -e 's|{{SHARED_CALENDAR_LABEL}}|家族|g' \
-  -e 's|{{CALENDAR_ID_SHARED}}|xxxxx@group.calendar.google.com|g' \
-  -e 's|{{CALENDAR_ID_PRIVATE}}|yyyyy@group.calendar.google.com|g' \
-  -e 's|{{X_USERNAME}}|@your_handle|g' \
-  .claude/commands/*.md
-
-# macOS/BSD sed は -i の後に '' が必要
-sed -i '' \
-  -e 's|{{PARTNER_NAME}}|花子|g' \
-  ...
-```
-
-呼び名（システムプロンプトの「太郎さんは〜した」の部分）は次の Step 3 の `secretary.config.yml` で設定する。
+呼び名は `secretary.config.yml` の `user_name` で設定する（`secretary.config.example.yml` をコピーして書き換える）。
 
 カレンダーは1つしか使わないなら、`.claude/commands/goodmorning.md` `goodnight.md` の該当する行（共有・プライベートのカレンダー定義）をまるごと削除すればいい。
 
-### 3. Python バッチ用の設定
-
-```bash
-cp secretary.config.example.yml secretary.config.yml
-# secretary.config.yml の user_name を編集
-```
-
-`secretary.config.yml` は `.gitignore` で除外されるのでpushされない。
-
-### 4. 環境変数（任意）
+### 3. 環境変数（任意）
 
 ntfy.sh で通知を受け取りたいなら `.env` を作る。
 
@@ -103,7 +93,7 @@ ntfy.sh で通知を受け取りたいなら `.env` を作る。
 NTFY_TOPIC=your-secret-topic-name
 ```
 
-### 5. GitHub Actions の secrets
+### 4. GitHub Actions の secrets
 
 vault リポの Settings → Secrets and variables → Actions に以下を登録。
 
@@ -112,7 +102,7 @@ vault リポの Settings → Secrets and variables → Actions に以下を登�
 
 これで毎朝7時(JST) に日報、毎週月曜7:30に週報・月報が生成される。
 
-### 6. ディレクトリの前提
+### 5. ディレクトリの前提
 
 vault 直下に以下のディレクトリが必要（無ければ作る）。
 
