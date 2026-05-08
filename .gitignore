@@ -1,6 +1,9 @@
 # 個人化設定（このファイルは公開しない）
 secretary.config.yml
 
+# Claude Code 用のリポジトリ内メモ（公開しない）
+CLAUDE.md
+
 # 環境変数（NTFY_TOPIC など）
 .env
 
