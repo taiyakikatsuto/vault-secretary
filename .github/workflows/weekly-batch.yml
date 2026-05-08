@@ -1,0 +1,40 @@
+name: Weekly Batch
+
+on:
+  schedule:
+    - cron: '30 22 * * 1'  # 月曜 7:30 JST（daily_batchの30分後）
+  workflow_dispatch:
+
+jobs:
+  weekly-process:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.4.0
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Run weekly batch
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python .scripts/weekly_batch.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "obsidian-bot"
+          git config user.email "bot@obsidian"
+          git add -A
+          git diff --staged --quiet || git commit -m "🤖 weekly batch $(date +%Y-%m-%d)"
+          git push

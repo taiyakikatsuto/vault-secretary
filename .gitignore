@@ -1,0 +1,21 @@
+# 個人化設定（このファイルは公開しない）
+secretary.config.yml
+
+# 環境変数（NTFY_TOPIC など）
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
