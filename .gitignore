@@ -1,5 +1,6 @@
-# 個人化設定（このファイルは公開しない）
-secretary.config.yml
+# secretary.config.yml は commit 対象。秘匿値（API キーやカレンダー ID 等）は
+# 入れず、呼び名や境界時刻のような非秘匿な設定だけを置く前提。
+# CI（GitHub Actions）でも checkout して読むので、コミットしないと参照できない。
 
 # Claude Code 用のリポジトリ内メモ（公開しない）
 CLAUDE.md

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# pre-commit hook: secretary.config.yml が staged な commit で
+# .github/workflows/daily-batch.yml の cron を自動同期する。
+#
+# setup.sh が `.git/hooks/pre-commit` にこのファイルへのシンボリックリンクを張る想定。
+# リポ内に追跡対象として置くことで、フック自体もコードレビュー可能になる。
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# secretary.config.yml が staged なときだけ動く
+if ! git diff --cached --name-only | grep -q '^secretary\.config\.yml$'; then
+    exit 0
+fi
+
+bash "${REPO_ROOT}/.scripts/sync_cron.sh"
+
+# yaml が更新されたら追加でステージング
+if ! git diff --quiet "${REPO_ROOT}/.github/workflows/daily-batch.yml" 2>/dev/null; then
+    git add "${REPO_ROOT}/.github/workflows/daily-batch.yml"
+    echo "  → daily-batch.yml を config に合わせて自動同期したよ〜♡"
+fi

@@ -1,13 +1,18 @@
 name: Weekly Batch
 
 on:
-  schedule:
-    - cron: '30 22 * * 1'  # 月曜 7:30 JST（daily_batchの30分後）
+  # daily_batch が成功完了したら起動（毎日1回）。
+  # weekly_batch.py 側で月曜＆境界時刻判定して、それ以外の日は即 exit する。
+  workflow_run:
+    workflows: ["Daily Batch"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   weekly-process:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
 

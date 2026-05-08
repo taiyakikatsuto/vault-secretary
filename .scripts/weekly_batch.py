@@ -5,10 +5,12 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).parent))
 from report_utils import generate_weekly_report, generate_monthly_report, _send_ntfy
+from secretary_config import daily_boundary_hour
 
 VAULT_ROOT = Path(__file__).parent.parent
 INBOX_DIR = VAULT_ROOT / "Inbox"
 JST = timezone(timedelta(hours=9))
+BOUNDARY_HOUR = daily_boundary_hour()
 
 
 def archive_old_thino_files(days_threshold=14):
@@ -43,6 +45,16 @@ def notify_reports(year, week, weekly_result, monthly_result):
 
 def main():
     now = datetime.now(JST)
+
+    # workflow_run で daily から連鎖起動するため、月曜＆境界時刻のときだけ実行する。
+    # daily が境界時刻に走った直後 = weekly も同じ hour で起動される前提。
+    if now.weekday() != 0:
+        print(f"Not Monday (weekday={now.weekday()}). Skipping.")
+        sys.exit(0)
+    if now.hour != BOUNDARY_HOUR:
+        print(f"Not boundary hour (current={now.hour}, boundary={BOUNDARY_HOUR}). Skipping.")
+        sys.exit(0)
+
     today = now.strftime("%Y-%m-%d")
     print(f"Weekly batch start: {today}")
 

@@ -2,7 +2,10 @@ name: Daily Batch
 
 on:
   schedule:
-    - cron: '0 22 * * *'  # 翌朝7時 JST（=31時）
+    # この cron は .scripts/sync_cron.sh が secretary.config.yml の
+    # daily_boundary_hour から (hour - 9 + 24) % 24 で生成する。
+    # 手で書き換えない。pre-commit hook を有効にしていれば自動同期される。
+    - cron: '0 20 * * *'
   workflow_dispatch:       # 手動実行も可能
 
 jobs:
@@ -28,7 +31,6 @@ jobs:
       - name: Run daily batch
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DAILY_BOUNDARY_HOUR: '7'
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: python .scripts/daily_batch.py
 

@@ -50,13 +50,24 @@ echo "==== vault-secretary セットアップ ===="
 echo ""
 
 # ---- 1. システムプロンプト用の呼び名 ----
-echo "[1/3] システムプロンプトの呼び名を設定するよ〜"
+echo "[1/4] システムプロンプトの呼び名を設定するよ〜"
 echo "      （日報に「太郎さんは〜した」みたいに使われる名前）"
 USER_NAME=$(ask "あなたの呼び名" "ユーザー")
 echo ""
 
-# ---- 2. Google Calendar 設定 ----
-echo "[2/3] Google Calendar の設定〜"
+# ---- 2. 論理日付の境界時刻 ----
+echo "[2/4] 論理日付の境界時刻〜（0-23 のJST。深夜のメモを前日扱いにする境目）"
+while :; do
+    BOUNDARY_HOUR=$(ask "境界時刻" "5")
+    if [[ "$BOUNDARY_HOUR" =~ ^[0-9]+$ ]] && (( BOUNDARY_HOUR >= 0 && BOUNDARY_HOUR <= 23 )); then
+        break
+    fi
+    echo "  0〜23 の整数で入力してね〜"
+done
+echo ""
+
+# ---- 3. Google Calendar 設定 ----
+echo "[3/4] Google Calendar の設定〜"
 echo "      使わないなら全部空Enterでスキップしてね〜"
 echo ""
 echo "  (a) パートナーとの共有カレンダー"
@@ -75,8 +86,8 @@ echo "  (b) プライベート用カレンダー"
 CALENDAR_ID_PRIVATE=$(ask "  プライベートカレンダーの ID（空Enter=使わない）" "")
 echo ""
 
-# ---- 3. 置換実行 ----
-echo "[3/3] 置換実行〜"
+# ---- 4. 置換実行 ----
+echo "[4/4] 置換実行〜"
 
 if [[ -n "$PARTNER_NAME" ]]; then
     "${SED_INPLACE[@]}" \
@@ -134,6 +145,42 @@ else
     echo "  $CONFIG_FILE を作ったよ〜"
 fi
 
+# secretary.config.yml の daily_boundary_hour を更新（既存ファイルでも上書き）
+if grep -q '^daily_boundary_hour:' "$CONFIG_FILE" 2>/dev/null; then
+    "${SED_INPLACE[@]}" \
+        -e "s|^daily_boundary_hour:.*|daily_boundary_hour: ${BOUNDARY_HOUR}|" \
+        "$CONFIG_FILE"
+else
+    echo "daily_boundary_hour: ${BOUNDARY_HOUR}" >> "$CONFIG_FILE"
+fi
+echo "  daily_boundary_hour を ${BOUNDARY_HOUR} に設定〜"
+
+# ---- 5. workflow yaml の cron を config から同期 ----
+if [[ -x "${SCRIPT_DIR}/.scripts/sync_cron.sh" ]]; then
+    bash "${SCRIPT_DIR}/.scripts/sync_cron.sh" || echo "  (sync_cron.sh が失敗した〜)"
+fi
+
+# ---- 6. pre-commit hook を仕込むかどうか ----
+HOOK_TARGET="${SCRIPT_DIR}/.git/hooks/pre-commit"
+HOOK_SOURCE_REL=".scripts/git-hooks/pre-commit-sync-cron"
+HOOK_SOURCE_ABS="${SCRIPT_DIR}/${HOOK_SOURCE_REL}"
+
+if [[ -d "${SCRIPT_DIR}/.git" ]] && [[ -f "${HOOK_SOURCE_ABS}" ]]; then
+    echo ""
+    INSTALL_HOOK=$(ask "pre-commit hook 入れる？config.yml 編集時に cron が自動同期される (Y/n)" "Y")
+    if [[ "${INSTALL_HOOK}" =~ ^[Yy]$ ]]; then
+        if [[ -e "${HOOK_TARGET}" ]] && [[ ! -L "${HOOK_TARGET}" ]]; then
+            BACKUP="${HOOK_TARGET}.bak.$(date +%Y%m%d%H%M%S)"
+            mv "${HOOK_TARGET}" "${BACKUP}"
+            echo "  既存の pre-commit を ${BACKUP} に退避〜"
+        fi
+        ln -sf "../../${HOOK_SOURCE_REL}" "${HOOK_TARGET}"
+        echo "  pre-commit hook を有効化〜♡"
+    else
+        echo "  hook 入れないからね〜。境界時刻を変えたら 'bash .scripts/sync_cron.sh' を叩いてから commit してね"
+    fi
+fi
+
 # ---- 残ったプレースホルダーがないか確認 ----
 REMAINING=$(grep -l '{{[A-Z_]*}}' "$COMMANDS_DIR"/*.md 2>/dev/null || true)
 if [[ -n "$REMAINING" ]]; then
@@ -150,4 +197,4 @@ echo "  1. GitHub Actions の Secrets に ANTHROPIC_API_KEY を登録"
 echo "     （Settings → Secrets and variables → Actions）"
 echo "  2. ntfy.sh で通知を受け取るなら、.env に NTFY_TOPIC を書いて"
 echo "     GitHub Secrets にも同じ値を登録"
-echo "  3. git commit & push したら毎朝7時(JST)に日報が自動生成される"
+echo "  3. git commit & push したら毎朝${BOUNDARY_HOUR}時(JST)に日報が自動生成される"

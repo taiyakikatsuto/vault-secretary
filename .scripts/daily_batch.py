@@ -9,7 +9,7 @@ import anthropic
 sys.path.insert(0, str(Path(__file__).parent))
 from kanban_utils import archive_done_tasks, ensure_task_cards_for_unlinked
 from report_utils import _send_ntfy
-from secretary_config import user_name
+from secretary_config import user_name, daily_boundary_hour
 
 # 設定
 VAULT_ROOT = Path(__file__).parent.parent
@@ -22,7 +22,9 @@ JST = timezone(timedelta(hours=9))
 THINO_FILENAME_RE = re.compile(r'^\d{4}-\d{2}-\d{2}\.md$')
 # Thinoエントリの開始行: "- HH:MM:SS" or "- HH:MM" or "- [x] HH:MM:SS"
 THINO_ENTRY_RE = re.compile(r'^- (?:\[.\] )?(\d{2}):(\d{2})(?::(\d{2}))?')
-BOUNDARY_HOUR = int(os.environ.get("DAILY_BOUNDARY_HOUR", "7"))
+# 境界時刻は env > secretary.config.yml > デフォルト の優先順で解決する。
+# CI（GitHub Actions）は workflow yaml で env をセット、ローカルは config を読む想定。
+BOUNDARY_HOUR = int(os.environ.get("DAILY_BOUNDARY_HOUR") or daily_boundary_hour())
 
 
 def get_todays_inbox_files(date_str):
@@ -65,9 +67,9 @@ def get_todays_inbox_files(date_str):
 def get_thino_entries_in_window(date_str):
     """Thinoファイルからwindow内のエントリだけ抽出する（ファイルは移動しない）
 
-    window: 前日7:00 〜 当日7:00
-    - 前日ファイル（daily_date_str.md）の 7:00〜23:59 のエントリ
-    - 当日ファイル（date_str.md）の 0:00〜6:59 のエントリ
+    window: 前日 BOUNDARY_HOUR:00 〜 当日 BOUNDARY_HOUR:00
+    - 前日ファイル（daily_date_str.md）の BOUNDARY_HOUR:00〜23:59 のエントリ
+    - 当日ファイル（date_str.md）の 0:00〜(BOUNDARY_HOUR-1):59 のエントリ
     """
     window_end = datetime.fromisoformat(date_str).replace(
         hour=BOUNDARY_HOUR, minute=0, second=0, microsecond=0, tzinfo=JST
@@ -77,14 +79,14 @@ def get_thino_entries_in_window(date_str):
 
     entries = []
 
-    # 前日ファイル: 7:00〜23:59 のエントリ
+    # 前日ファイル: BOUNDARY_HOUR:00〜23:59 のエントリ
     prev_file = INBOX_DIR / f"{daily_date_str}.md"
     if prev_file.exists():
         for hour, text in _parse_thino_entries(prev_file):
             if hour >= BOUNDARY_HOUR:
                 entries.append(text)
 
-    # 当日ファイル: 0:00〜6:59 のエントリ
+    # 当日ファイル: 0:00〜(BOUNDARY_HOUR-1):59 のエントリ
     next_file = INBOX_DIR / f"{date_str}.md"
     if next_file.exists():
         for hour, text in _parse_thino_entries(next_file):

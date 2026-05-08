@@ -8,7 +8,7 @@ Claude Code の slash command と GitHub Actions で動く。
 
 - **`/goodmorning`**：今朝のあいさつから始まり、Google Calendar の予定 + Tasks Kanban を読んで「今日やること」を一緒に決める。日中の時間ブロックも雛形として組む。
 - **`/goodnight`**：1日の Thino メモと作業レポートを拾い、計画 vs 実績で振り返る。タスクの完了/延期/新規追加もここで反映。明日やることまで仕込む。
-- **Daily/Weekly/Monthly ノート自動生成**：GitHub Actions が毎朝7時に Inbox と Thino を Claude に渡し、日報を `Diary/Daily/` に書く。週報・月報も同じ仕組みで生成。本人の発言は引用、内面の創作は禁止という秘書視点で書かれる。
+- **Daily/Weekly/Monthly ノート自動生成**：GitHub Actions が境界時刻（`daily_boundary_hour`、デフォルト 5 時 JST）に Inbox と Thino を Claude に渡し、日報を `Diary/Daily/` に書く。週報・月報も同じ仕組みで、daily の直後に月曜だけ生成。本人の発言は引用、内面の創作は禁止という秘書視点で書かれる。
 - **ntfy.sh プッシュ通知**：日報・週報の中身がそのままスマホに飛んでくる。
 
 ## 仕組み
@@ -100,7 +100,7 @@ vault リポの Settings → Secrets and variables → Actions に以下を登�
 - `ANTHROPIC_API_KEY`：Anthropic Console で発行したキー
 - `NTFY_TOPIC`：通知を受け取るならトピック名（任意）
 
-これで毎朝7時(JST) に日報、毎週月曜7:30に週報・月報が生成される。
+これで境界時刻（デフォルト 5 時 JST）に日報、月曜だけ daily の直後に週報・月報が生成される。境界時刻は `secretary.config.yml` の `daily_boundary_hour` で変更可。
 
 ### 5. ディレクトリの前提
 
@@ -125,7 +125,29 @@ Inbox の Thino メモは `YYYY-MM-DD.md` 形式（[Thino プラグイン](https
 
 ## 論理日付（LOGICAL_DATE）
 
-「今日」の境界時間は環境変数 `DAILY_BOUNDARY_HOUR` で変えられる（デフォルト 7時 JST）。深夜2時に書いたメモは「昨日のメモ」として扱いたい、という前提。
+「今日」の境界時間は `secretary.config.yml` の `daily_boundary_hour` で設定する（デフォルト 5 時 JST）。深夜2時に書いたメモは「昨日のメモ」として扱いたい、という前提。
+
+**`secretary.config.yml` が境界時刻のセマンティックなソース**。`.github/workflows/daily-batch.yml` の cron は config から生成される artifact で、`bash .scripts/sync_cron.sh` が UTC 時刻を逆算して書き換える。
+
+### 設定変更フロー
+
+```
+1. secretary.config.yml の daily_boundary_hour を編集
+2. yaml を同期
+   - pre-commit hook を入れた人: そのまま git add/commit すれば自動で同期される
+   - 入れてない人: bash .scripts/sync_cron.sh を叩いてから git add/commit
+3. push（GitHub Actions が翌日の境界時刻に走る）
+```
+
+`setup.sh` 実行時に「pre-commit hook 入れる？」と聞かれる。デフォルト yes で `.git/hooks/pre-commit` にシンボリックリンクが張られ、`secretary.config.yml` を含む commit のたびに `daily-batch.yml` の cron が自動同期される。後から有効化／無効化したいときは `ln -sf ../../.scripts/git-hooks/pre-commit-sync-cron .git/hooks/pre-commit`／`rm .git/hooks/pre-commit`。
+
+ローカル CLI で違う時間帯にテスト実行したいときは環境変数 `DAILY_BOUNDARY_HOUR` で上書き可能（`DAILY_BOUNDARY_HOUR=13 python .scripts/daily_batch.py`）。優先順位は **環境変数 > `secretary.config.yml` > デフォルト 5**。
+
+※ `secretary.config.yml` は **commit する**運用（vault リポを private で運用する前提）。CI でも checkout して読むため、コミットしないと参照できない。秘匿値（API キー等）は GitHub Secrets に分けて入れる。
+
+### GitHub Actions のコスト
+
+daily 1回/日 + weekly 1回/日（月曜以外は即 exit）で月60-90分。private リポの無料枠 2000分/月の範囲内。
 
 ## カスタマイズ
 
